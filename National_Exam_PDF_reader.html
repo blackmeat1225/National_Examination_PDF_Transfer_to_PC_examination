@@ -2,298 +2,1984 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>國考模擬系統 v22 - 全功能實戰版</title>
+    <title>國考答案卷/問卷獨立切割系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; --bg: #f4f7f6; }
-        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); display: flex; gap: 20px; margin: 0; height: 100vh; overflow: hidden; padding: 15px; box-sizing: border-box; }
+        :root { 
+            --primary: #3498db; 
+            --success: #27ae60; 
+            --warning: #e67e22; 
+            --danger: #ff4d4d; 
+            --ans-bg: #e8f4fc; 
+            --quiz-bg: #fff3e0;
+            --dark: #2c3e50; 
+            --bg: #f4f7f6; 
+        }
+        body { 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            gap: 20px; 
+            margin: 0; 
+            height: 100vh; 
+            overflow: hidden; 
+            padding: 15px; 
+            box-sizing: border-box; 
+        }
         
-        /* 側邊欄 */
-        .sidebar { width: 380px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-y: auto; height: 100%; display: flex; flex-direction: column; }
-        .main-content { flex: 1; background: #fff; padding: 25px; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); overflow-y: auto; height: 100%; border: 2px solid #eee; position: relative; }
-
-        /* 計時器樣式 */
-        .timer-box { background: var(--dark); color: #fff; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        #timer-display { font-family: monospace; font-size: 28px; font-weight: bold; display: block; color: #5dade2; }
-
-        /* 成績紀錄牆 */
-        .record-wall { background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-top: 15px; font-size: 13px; }
-        .record-item { border-bottom: 1px solid #eee; padding: 5px 0; display: flex; justify-content: space-between; }
-        .record-item:last-child { border: none; }
-
-        /* 模式切換 */
-        .btn-mode { background: var(--dark); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 15px; }
-        .edit-only { display: block; } /* 校正模式專用 */
-
-        .config-panel { background: #fff3e0; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; border-left: 5px solid var(--warning); }
-        .ans-panel { background: #e8f5e9; padding: 12px; border-radius: 8px; border: 1px solid #27ae60; margin-bottom: 15px; }
+        .sidebar { 
+            width: 420px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            overflow-y: auto; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+        }
         
-        .ans-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 10px; background: #fff; padding: 5px; border: 1px solid #ddd; }
-        .ans-unit { display: flex; flex-direction: column; align-items: center; border: 1px solid #eee; padding: 2px; border-radius: 4px; font-size: 11px; }
-        .ans-unit input { width: 25px; text-align: center; font-size: 14px; font-weight: bold; color: var(--primary); border: 1px solid #ccc; }
+        .main-content { 
+            flex: 1; 
+            background: #fff; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05); 
+            overflow-y: auto; 
+            height: 100%; 
+            border: 2px solid #eee; 
+            position: relative; 
+        }
 
-        /* 題目樣式 */
-        .quiz-card { border-left: 6px solid var(--primary); padding: 20px; margin-bottom: 20px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .options-list label { display: block; padding: 10px; margin: 5px 0; border: 1px solid #eee; border-radius: 6px; cursor: pointer; }
-        .correct-ans { display: none; margin-top: 10px; padding: 10px; border-radius: 5px; font-weight: bold; background: #eafaf1; color: #27ae60; border: 1px dashed #27ae60; }
+        .status-box { 
+            background: var(--dark); 
+            color: #fff; 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: center; 
+            margin-bottom: 15px; 
+        }
         
-        .file-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; }
-        .file-item.active { background: #e3f2fd; font-weight: bold; border-left: 4px solid var(--primary); }
-        button { border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-blue { background: var(--primary); color: white; width: 100%; }
+        #timer-display { 
+            font-family: monospace; 
+            font-size: 28px; 
+            font-weight: bold; 
+            display: block; 
+            color: #5dade2; 
+        }
+        
+        .parse-stats { 
+            font-size: 13px; 
+            margin-top: 8px; 
+            color: #ccc; 
+            border-top: 1px solid #444; 
+            padding-top: 8px; 
+        }
+
+        /* 檔案管理 */
+        .file-management {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .file-type-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .file-type-btn {
+            flex: 1;
+            padding: 10px;
+            background: #e9ecef;
+            border: 2px solid #adb5bd;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .file-type-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .ans-type { background: var(--ans-bg); border-color: var(--primary); }
+        .quiz-type { background: var(--quiz-bg); border-color: var(--warning); }
+        
+        /* 切割參數面板 */
+        .cut-config-panel {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #3498db;
+            position: relative;
+        }
+        
+        .cut-config-panel.ans-config { border-color: var(--primary); }
+        .cut-config-panel.quiz-config { border-color: var(--warning); border-left: 5px solid var(--warning); }
+        
+        .cut-config-panel h4 { 
+            margin-top: 0; 
+            color: var(--dark); 
+            font-size: 14px; 
+            margin-bottom: 10px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .config-tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: white;
+            font-weight: normal;
+        }
+        
+        .ans-tag { background: var(--primary); }
+        .quiz-tag { background: var(--warning); }
+        
+        .cut-param-group { 
+            margin-bottom: 12px; 
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .cut-param-group label { 
+            display: flex; 
+            justify-content: space-between; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+            font-size: 12px;
+        }
+        
+        .cut-param-group input[type="range"] { 
+            width: 100%; 
+            cursor: pointer; 
+            height: 6px;
+            border-radius: 3px;
+        }
+        
+        .cut-param-group .param-value { 
+            font-family: monospace; 
+            background: white; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            border: 1px solid #ddd;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        /* 預覽面板 */
+        .preview-panel { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            border: 1px solid #dee2e6; 
+            max-height: 300px; 
+            overflow-y: auto; 
+        }
+        
+        .preview-panel h5 { 
+            margin-top: 0; 
+            color: var(--dark); 
+            font-size: 13px; 
+            margin-bottom: 10px;
+        }
+        
+        .preview-text { 
+            font-family: monospace; 
+            font-size: 10px; 
+            line-height: 1.3; 
+            white-space: pre-wrap; 
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #ddd; 
+        }
+        
+        .preview-line { 
+            margin: 2px 0; 
+        }
+        
+        .preview-line.highlight { 
+            background: #fff3cd; 
+        }
+        
+        /* 答案網格 */
+        .ans-panel { 
+            background: #f8f9fa; /* 從綠色改為中性灰色 */
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid #dee2e6; /* 從綠色改為灰色 */
+            margin-bottom: 15px; 
+        }
+        
+        .ans-grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 4px; 
+            margin-top: 10px; 
+            background: #fff; 
+            padding: 5px; 
+            border: 1px solid #ddd; 
+            height: 350px; 
+            overflow-y: auto; 
+        }
+        
+        .ans-unit { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            border: 1px solid #eee; 
+            padding: 2px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            background: white; /* 確保白色背景 */
+        }
+        
+        .ans-unit.multi-letter { 
+            background-color: #fff3e0; /* 改為較淡的警示色 */
+            border: 1px solid var(--warning); 
+        }
+        
+        .ans-unit.cut-problem { 
+            background-color: #fff0f0; /* 改為較淡的錯誤色 */
+            border: 1px solid #ffcccc; 
+        }
+        
+        .ans-unit input { 
+            width: 45px; 
+            text-align: center; 
+            font-size: 12px; 
+            font-weight: bold; 
+            color: var(--primary); 
+            border: 1px solid #ccc; 
+            background: white; /* 輸入框白色背景 */
+        }
+        
+        .btn-mode { 
+            background: var(--dark); 
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            width: 100%; 
+            margin-bottom: 15px; 
+        }
+        
+        .file-item { 
+            padding: 8px; 
+            border-bottom: 1px solid #eee; 
+            font-size: 13px; 
+            cursor: pointer; 
+        }
+        
+        .file-item.active { 
+            background: #e3f2fd; 
+            font-weight: bold; 
+            border-left: 4px solid var(--primary); 
+        }
+        
+        .btn-blue { 
+            background: var(--primary); 
+            color: white; 
+            width: 100%; 
+            border:none; 
+            padding:15px; 
+            border-radius:6px; 
+            cursor:pointer; 
+            font-weight:bold; 
+        }
+
+        /* 題目顯示區域 - 移除預設綠色底色 */
+        .quiz-card { 
+            border-left: 6px solid var(--primary); 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            background: #fff; /* 確保白色背景 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            transition: all 0.3s ease;
+        }
+        
+        /* 只在對答案時才顯示顏色 */
+        .quiz-card.correct { 
+            background-color: #f0fff0 !important; /* 改為較淡的綠色 */
+            border-left-color: #28a745 !important; 
+        }
+        
+        .quiz-card.incorrect { 
+            background-color: #fff0f0 !important; /* 改為較淡的紅色 */
+            border-left-color: #dc3545 !important; 
+        }
+        
+        .quiz-card.unanswered { 
+            background-color: #f9f9f9 !important; /* 改為較淡的灰色 */
+            border-left-color: #6c757d !important; 
+        }
+        
+        .options-list label { 
+            display: block; 
+            padding: 10px; 
+            margin: 5px 0; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            background: white; /* 確保白色背景 */
+        }
+        
+        .options-list label:hover { 
+            background-color: #f5f5f5; 
+        }
+        
+        /* 只在選擇或對答案時顯示顏色 */
+        .options-list label.selected { 
+            background-color: #e6f2ff; /* 改為較淡的藍色 */
+            border-color: #007bff; 
+        }
+        
+        .options-list label.correct-option { 
+            background-color: #e7f7e7 !important; /* 改為較淡的綠色 */
+            border-color: #28a745 !important; 
+        }
+        
+        .options-list label.incorrect-option { 
+            background-color: #fdeaea !important; /* 改為較淡的紅色 */
+            border-color: #dc3545 !important; 
+        }
+        
+        .correct-ans { 
+            display: none; 
+            margin-top: 10px; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            background: #fff; 
+            color: #27ae60; 
+            border: 1px dashed #27ae60; 
+        }
+        
+        /* 匯出按鈕 */
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .export-buttons button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .cut-visualization {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .config-summary {
+            background: #f8f9fa; /* 改為中性灰色 */
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 11px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .update-status {
+            background: #f0f9ff; /* 改為較淡的藍色 */
+            color: #0056b3;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+            border: 1px solid #b3d7ff;
+        }
+        
+        .update-status.error {
+            background: #fff0f0;
+            color: #721c24;
+            border: 1px solid #ffcccc;
+        }
+        
+        /* 分數顯示區 */
+        .score-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); /* 改為中性色 */
+            color: #333;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #dee2e6;
+        }
+        
+        .score-value {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #007bff; /* 藍色數字 */
+        }
+        
+        .score-percentage {
+            font-size: 24px;
+            color: #666;
+        }
+        
+        .score-breakdown {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .breakdown-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .breakdown-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* 控制按鈕組 */
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .control-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn.primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .control-btn.primary:hover {
+            background: #0056b3;
+        }
+        
+        .control-btn.success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .control-btn.success:hover {
+            background: #1e7e34;
+        }
+        
+        .control-btn.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .control-btn.warning:hover {
+            background: #e0a800;
+        }
+        
+        .control-btn.danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .control-btn.danger:hover {
+            background: #c82333;
+        }
+        
+        /* 作答狀態標示 */
+        .answer-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-correct {
+            background: #e7f7e7; /* 較淡的綠色 */
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-incorrect {
+            background: #fdeaea; /* 較淡的紅色 */
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-unanswered {
+            background: #f8f9fa; /* 中性灰色 */
+            color: #6c757d;
+            border: 1px solid #e9ecef;
+        }
+        
+        /* 分數詳細資訊 */
+        .score-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .score-details h4 {
+            margin-top: 0;
+            color: var(--dark);
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .score-table th, .score-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            background: white; /* 表格白色背景 */
+        }
+        
+        .score-table th {
+            background: #f1f3f4;
+            font-weight: bold;
+        }
+        
+        .score-table tr:hover {
+            background: #f5f7f8;
+        }
+        
+        .score-table tr.table-success td {
+            background-color: #f0fff0;
+        }
+        
+        .score-table tr.table-danger td {
+            background-color: #fff0f0;
+        }
+        
+        .score-table tr.table-secondary td {
+            background-color: #f9f9f9;
+        }
+        
+        /* 新增：題目區樣式優化 */
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .question-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .question-points {
+            background: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        /* 選項樣式優化 */
+        .option-circle {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            background: #f0f0f0;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+        
+        /* 修正：選項前的圓圈樣式 */
+        .options-list label input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .options-list label {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <button id="toggleModeBtn" class="btn-mode">🛠️ 切換至：校正模式</button>
+    <button id="toggleModeBtn" class="btn-mode">🛠️ 進入：校正模式</button>
 
-    <div class="timer-box">
+    <div class="status-box">
         <span id="timer-display">00:00:00</span>
-        <div style="margin-top:5px;">
-            <button onclick="stopTimer()" style="background:#666; font-size:11px; padding:4px 8px;">暫停</button>
-            <button onclick="resetTimer()" style="background:#888; font-size:11px; padding:4px 8px;">重置</button>
+        <div class="parse-stats" id="parse-stats">狀態：等待載入檔案</div>
+    </div>
+
+    <!-- 更新狀態提示 -->
+    <div id="update-status" class="update-status"></div>
+
+    <!-- 檔案管理 -->
+    <div class="file-management">
+        <h4 style="margin-top:0;">📁 檔案管理</h4>
+        
+        <div class="file-type-group">
+            <div class="file-type-btn ans-type active" id="btn-ans-files" onclick="switchFileType('ans')">
+                📘 答案卷設定
+            </div>
+            <div class="file-type-btn quiz-type" id="btn-quiz-files" onclick="switchFileType('quiz')">
+                📋 問卷設定
+            </div>
+        </div>
+        
+        <div style="margin-bottom:15px;">
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+            <div id="file-list" style="margin-top:10px; border: 1px solid #ddd; max-height: 120px; overflow-y: auto;"></div>
+        </div>
+        
+        <div class="config-summary" id="config-summary">
+            當前設定：答案卷 (Y:8px, X:5px, 頁首:200字, 頁尾:0字)
         </div>
     </div>
 
-    <div style="margin-bottom:15px;">
-        <input type="file" id="folderInput" webkitdirectory directory multiple>
-        <div id="file-list" style="margin-top:10px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;"></div>
+    <!-- 答案卷切割參數 -->
+    <div class="cut-config-panel ans-config" id="ans-config-panel">
+        <h4>
+            📘 答案卷切割參數
+            <span class="config-tag ans-tag">答案卷</span>
+        </h4>
+        
+        <div style="font-size:11px; color:#666; margin-bottom:10px;">
+            答案卷通常有明確的「答案：A」格式，需要精確切割
+        </div>
+        
+        <div class="cut-param-group">
+            <label>Y座標切割閾值: <span class="param-value" id="ans_v_y">8</span> px</label>
+            <input type="range" id="ans_yThreshold" min="1" max="30" value="8" step="0.5">
+            <div style="font-size: 10px; color: #666;">
+                <span style="float:left;">寬鬆 (1)</span>
+                <span style="float:right;">嚴格 (30)</span>
+                <div style="clear:both;"></div>
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>X座標切割閾值: <span class="param-value" id="ans_v_x">5</span> px</label>
+            <input type="range" id="ans_xThreshold" min="1" max="20" value="5" step="0.5">
+            <div style="font-size: 10px; color: #666;">
+                <span style="float:left;">寬鬆 (1)</span>
+                <span style="float:right;">嚴格 (20)</span>
+                <div style="clear:both;"></div>
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>頁首切除字數: <span class="param-value" id="ans_v_th">200</span> 字</label>
+            <input type="range" id="ans_trimHeader" min="0" max="500" value="200">
+            <div style="font-size: 10px; color: #666;">
+                切除開頭非題目內容（如標題、說明等）
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>頁尾切除字數: <span class="param-value" id="ans_v_tf">0</span> 字</label>
+            <input type="range" id="ans_trimFooter" min="0" max="500" value="0">
+            <div style="font-size: 10px; color: #666;">
+                切除結尾非題目內容（如版權聲明、頁碼等）
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>字元寬度估算: <span class="param-value" id="ans_v_w">10</span> px</label>
+            <input type="range" id="ans_charWidth" min="5" max="20" value="10">
+        </div>
+        
+        <button class="reparse-btn" data-type="ans" style="width:100%; padding:8px; margin-top:5px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer;">
+            🔄 重新切割答案卷
+        </button>
     </div>
 
-    <div id="adjustment-zone" class="edit-only">
-        <div class="config-panel">
-            <strong>⚙️ 題目參數</strong><br>
-            Y-Shift: <input type="range" id="yThreshold" min="1" max="25" value="8"> <span id="v_y">8</span><br>
-            頁首切除: <input type="range" id="trimHeader" min="0" max="1500" value="200"> <span id="v_t">200</span>
+    <!-- 問卷切割參數 -->
+    <div class="cut-config-panel quiz-config" id="quiz-config-panel" style="display:none;">
+        <h4>
+            📋 問卷切割參數
+            <span class="config-tag quiz-tag">問卷</span>
+        </h4>
+        
+        <div style="font-size:11px; color:#666; margin-bottom:10px;">
+            問卷通常有題目和選項，需要不同的切割策略
         </div>
+        
+        <div class="cut-param-group">
+            <label>Y座標切割閾值: <span class="param-value" id="quiz_v_y">12</span> px</label>
+            <input type="range" id="quiz_yThreshold" min="1" max="30" value="12" step="0.5">
+            <div style="font-size: 10px; color: #666;">
+                <span style="float:left;">寬鬆 (1)</span>
+                <span style="float:right;">嚴格 (30)</span>
+                <div style="clear:both;"></div>
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>X座標切割閾值: <span class="param-value" id="quiz_v_x">8</span> px</label>
+            <input type="range" id="quiz_xThreshold" min="1" max="20" value="8" step="0.5">
+            <div style="font-size: 10px; color: #666;">
+                <span style="float:left;">寬鬆 (1)</span>
+                <span style="float:right;">嚴格 (20)</span>
+                <div style="clear:both;"></div>
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>頁首切除字數: <span class="param-value" id="quiz_v_th">300</span> 字</label>
+            <input type="range" id="quiz_trimHeader" min="0" max="500" value="300">
+            <div style="font-size: 10px; color: #666;">
+                切除開頭非題目內容（如標題、說明等）
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>頁尾切除字數: <span class="param-value" id="quiz_v_tf">0</span> 字</label>
+            <input type="range" id="quiz_trimFooter" min="0" max="500" value="0">
+            <div style="font-size: 10px; color: #666;">
+                切除結尾非題目內容（如版權聲明、頁碼等）
+            </div>
+        </div>
+        
+        <div class="cut-param-group">
+            <label>選項間距補償: <span class="param-value" id="quiz_v_s">15</span> px</label>
+            <input type="range" id="quiz_optionSpacing" min="5" max="30" value="15">
+        </div>
+        
+        <button class="reparse-btn" data-type="quiz" style="width:100%; padding:8px; margin-top:5px; background:var(--warning); color:white; border:none; border-radius:4px; cursor:pointer;">
+            🔄 重新切割問卷
+        </button>
+    </div>
+    
+    <!-- PDF文字預覽 -->
+    <div class="preview-panel">
+        <h5 id="preview-title">📄 答案卷解析文字預覽（前300字）</h5>
+        <div class="preview-text" id="pdfPreview"></div>
+        <div style="margin-top: 10px; font-size: 11px; color: #666; display: flex; justify-content: space-between;">
+            <span id="trim-info-header">頁首切除: 0字</span>
+            <span id="trim-info-footer">頁尾切除: 0字</span>
+        </div>
+    </div>
+    
+    <!-- 答案對照表 -->
+    <div id="adjustment-zone" style="display:none;">
         <div class="ans-panel">
-            <strong>🎯 答案修正 (偏移量: <span id="v_off">0</span>)</strong>
-            <input type="range" id="ansOffset" min="-50" max="50" value="0" style="width:100%">
+            <strong>🎯 答案對照表 (共 <span id="ans-count">0</span> 個答案)</strong>
             <div class="ans-grid" id="visualAnsGrid"></div>
         </div>
-        <button class="btn-blue" id="applyBtn" style="margin-bottom:15px;">🔄 刷新解析內容</button>
-    </div>
-
-    <div class="record-wall">
-        <strong>📈 最近成績紀錄</strong>
-        <div id="record-list" style="margin-top:5px;"></div>
-        <button onclick="clearRecords()" style="width:100%; background:none; color:red; font-size:10px; margin-top:5px; border:1px solid red;">清空紀錄</button>
+        
+        <div class="export-buttons">
+            <button onclick="exportToCSV()" style="background:#27ae60; color:white;">📥 匯出答案</button>
+            <button onclick="clearRecords()" style="background:#dc3545; color:white;">🗑️ 清空紀錄</button>
+        </div>
     </div>
 </div>
 
 <div class="main-content">
-    <h2 id="current-title" style="margin-top:0;">請選取考卷開始</h2>
+    <h2 id="current-title" style="margin-top:0;">請從左側選取考卷</h2>
     <hr>
+    
+    <!-- 控制按鈕組 -->
+    <div class="control-buttons" id="control-buttons" style="display:none;">
+        <button class="control-btn primary" onclick="submitAllAnswers()">📤 送出答案</button>
+        <button class="control-btn success" onclick="checkAllAnswers()">✅ 對答案</button>
+        <button class="control-btn warning" onclick="calculateScore()">📊 計算分數</button>
+        <button class="control-btn danger" onclick="resetAllAnswers()">🔄 重設作答</button>
+    </div>
+    
+    <!-- 分數顯示區 -->
+    <div id="score-box" class="score-box" style="display:none;">
+        <h3>測驗成績</h3>
+        <div class="score-value" id="total-score">0</div>
+        <div class="score-percentage" id="score-percentage">0%</div>
+        <div class="score-breakdown">
+            <div class="breakdown-item">
+                <span>正確</span>
+                <div class="breakdown-value" id="correct-count">0</div>
+            </div>
+            <div class="breakdown-item">
+                <span>錯誤</span>
+                <div class="breakdown-value" id="incorrect-count">0</div>
+            </div>
+            <div class="breakdown-item">
+                <span>未答</span>
+                <div class="breakdown-value" id="unanswered-count">0</div>
+            </div>
+            <div class="breakdown-item">
+                <span>正確率</span>
+                <div class="breakdown-value" id="accuracy-rate">0%</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cut-analysis" style="margin-bottom:20px;"></div>
+    
     <div id="quiz-box"></div>
-    <button id="submitBtn" class="btn-blue" style="display:none; background:var(--success); font-size:18px; padding:15px;">📢 提交評分並紀錄成績</button>
+    
+    <!-- 分數詳細資訊 -->
+    <div id="score-details" class="score-details" style="display:none;">
+        <h4>📋 答題詳細報告</h4>
+        <table class="score-table" id="score-table">
+            <thead>
+                <tr>
+                    <th>題號</th>
+                    <th>正確答案</th>
+                    <th>您的答案</th>
+                    <th>狀態</th>
+                    <th>得分</th>
+                </tr>
+            </thead>
+            <tbody id="score-table-body">
+                <!-- 動態生成 -->
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-    let isEditMode = false; // 預設為作答模式
+    let isEditMode = false;
     let examPool = {};
     let rawExamText = "";
+    let rawQuizText = "";
+    let lastAnsRawText = "";
+    let pdfPreviewText = "";
     let fullAnsSequence = []; 
     let finalData = [];
+    let startTime, timerInterval;
+    let currentFileType = 'ans'; // 'ans' 或 'quiz'
+    let userAnswers = {}; // 儲存使用者答案
+    let examResults = []; // 儲存考試結果
     
-    // 計時器變數
-    let startTime, timerInterval, elapsedTime = 0;
+    // 獨立切割參數設定
+    const cutParams = {
+        ans: {
+            yThreshold: 8,
+            xThreshold: 5,
+            trimHeader: 200,
+            trimFooter: 0,
+            charWidth: 10
+        },
+        quiz: {
+            yThreshold: 12,
+            xThreshold: 8,
+            trimHeader: 300,
+            trimFooter: 0,
+            optionSpacing: 15
+        }
+    };
 
-    // 初始化介面狀態
+    // 切換檔案類型
+    function switchFileType(type) {
+        currentFileType = type;
+        
+        // 更新按鈕狀態
+        document.getElementById('btn-ans-files').classList.toggle('active', type === 'ans');
+        document.getElementById('btn-quiz-files').classList.toggle('active', type === 'quiz');
+        
+        // 顯示對應的設定面板
+        document.getElementById('ans-config-panel').style.display = type === 'ans' ? 'block' : 'none';
+        document.getElementById('quiz-config-panel').style.display = type === 'quiz' ? 'block' : 'none';
+        
+        // 更新預覽標題
+        document.getElementById('preview-title').textContent = 
+            type === 'ans' ? '📄 答案卷解析文字預覽（前300字）' : '📄 問卷解析文字預覽（前300字）';
+        
+        // 更新設定摘要
+        updateConfigSummary();
+        
+        // 更新切除資訊顯示
+        updateTrimInfoDisplay();
+        
+        // 顯示對應的預覽
+        showPdfPreview(type);
+    }
+
+    // 更新設定摘要
+    function updateConfigSummary() {
+        const summary = document.getElementById('config-summary');
+        const params = cutParams[currentFileType];
+        
+        if (currentFileType === 'ans') {
+            summary.innerHTML = `
+                當前設定：<strong>答案卷</strong><br>
+                Y閾值: ${params.yThreshold}px | X閾值: ${params.xThreshold}px<br>
+                頁首: ${params.trimHeader}字 | 頁尾: ${params.trimFooter}字 | 字寬: ${params.charWidth}px
+            `;
+        } else {
+            summary.innerHTML = `
+                當前設定：<strong>問卷</strong><br>
+                Y閾值: ${params.yThreshold}px | X閾值: ${params.xThreshold}px<br>
+                頁首: ${params.trimHeader}字 | 頁尾: ${params.trimFooter}字 | 選項間距: ${params.optionSpacing}px
+            `;
+        }
+    }
+
+    // 更新切除資訊顯示
+    function updateTrimInfoDisplay() {
+        const params = cutParams[currentFileType];
+        const headerInfo = document.getElementById('trim-info-header');
+        const footerInfo = document.getElementById('trim-info-footer');
+        
+        if (headerInfo) {
+            headerInfo.textContent = `頁首切除: ${params.trimHeader}字`;
+        }
+        if (footerInfo) {
+            footerInfo.textContent = `頁尾切除: ${params.trimFooter}字`;
+        }
+    }
+
+    // 顯示更新狀態
+    function showUpdateStatus(message, isError = false) {
+        const statusDiv = document.getElementById('update-status');
+        if (!statusDiv) return;
+        
+        statusDiv.textContent = message;
+        statusDiv.className = `update-status ${isError ? 'error' : ''}`;
+        statusDiv.style.display = 'block';
+        
+        // 3秒後自動隱藏
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+    }
+
+    // 初始化控制項
+    function initCutControls() {
+        // 答案卷控制項
+        document.getElementById('ans_yThreshold').value = cutParams.ans.yThreshold;
+        document.getElementById('ans_xThreshold').value = cutParams.ans.xThreshold;
+        document.getElementById('ans_trimHeader').value = cutParams.ans.trimHeader;
+        document.getElementById('ans_trimFooter').value = cutParams.ans.trimFooter;
+        document.getElementById('ans_charWidth').value = cutParams.ans.charWidth;
+        
+        // 問卷控制項
+        document.getElementById('quiz_yThreshold').value = cutParams.quiz.yThreshold;
+        document.getElementById('quiz_xThreshold').value = cutParams.quiz.xThreshold;
+        document.getElementById('quiz_trimHeader').value = cutParams.quiz.trimHeader;
+        document.getElementById('quiz_trimFooter').value = cutParams.quiz.trimFooter;
+        document.getElementById('quiz_optionSpacing').value = cutParams.quiz.optionSpacing;
+        
+        // 更新顯示值
+        updateParamDisplay('ans');
+        updateParamDisplay('quiz');
+        
+        // 綁定事件
+        bindCutControlEvents();
+    }
+
+    // 綁定切割控制項事件
+    function bindCutControlEvents() {
+        // 答案卷控制項
+        document.getElementById('ans_yThreshold').oninput = function() { 
+            cutParams.ans.yThreshold = parseFloat(this.value);
+            document.getElementById('ans_v_y').innerText = cutParams.ans.yThreshold.toFixed(1);
+            updateConfigSummary();
+        };
+        
+        document.getElementById('ans_xThreshold').oninput = function() { 
+            cutParams.ans.xThreshold = parseFloat(this.value);
+            document.getElementById('ans_v_x').innerText = cutParams.ans.xThreshold.toFixed(1);
+            updateConfigSummary();
+        };
+        
+        document.getElementById('ans_trimHeader').oninput = function() { 
+            cutParams.ans.trimHeader = parseInt(this.value);
+            document.getElementById('ans_v_th').innerText = cutParams.ans.trimHeader;
+            updateConfigSummary();
+            updateTrimInfoDisplay();
+        };
+        
+        document.getElementById('ans_trimFooter').oninput = function() { 
+            cutParams.ans.trimFooter = parseInt(this.value);
+            document.getElementById('ans_v_tf').innerText = cutParams.ans.trimFooter;
+            updateConfigSummary();
+            updateTrimInfoDisplay();
+        };
+        
+        document.getElementById('ans_charWidth').oninput = function() { 
+            cutParams.ans.charWidth = parseInt(this.value);
+            document.getElementById('ans_v_w').innerText = cutParams.ans.charWidth;
+            updateConfigSummary();
+        };
+        
+        // 問卷控制項
+        document.getElementById('quiz_yThreshold').oninput = function() { 
+            cutParams.quiz.yThreshold = parseFloat(this.value);
+            document.getElementById('quiz_v_y').innerText = cutParams.quiz.yThreshold.toFixed(1);
+            updateConfigSummary();
+        };
+        
+        document.getElementById('quiz_xThreshold').oninput = function() { 
+            cutParams.quiz.xThreshold = parseFloat(this.value);
+            document.getElementById('quiz_v_x').innerText = cutParams.quiz.xThreshold.toFixed(1);
+            updateConfigSummary();
+        };
+        
+        document.getElementById('quiz_trimHeader').oninput = function() { 
+            cutParams.quiz.trimHeader = parseInt(this.value);
+            document.getElementById('quiz_v_th').innerText = cutParams.quiz.trimHeader;
+            updateConfigSummary();
+            updateTrimInfoDisplay();
+        };
+        
+        document.getElementById('quiz_trimFooter').oninput = function() { 
+            cutParams.quiz.trimFooter = parseInt(this.value);
+            document.getElementById('quiz_v_tf').innerText = cutParams.quiz.trimFooter;
+            updateConfigSummary();
+            updateTrimInfoDisplay();
+        };
+        
+        document.getElementById('quiz_optionSpacing').oninput = function() { 
+            cutParams.quiz.optionSpacing = parseInt(this.value);
+            document.getElementById('quiz_v_s').innerText = cutParams.quiz.optionSpacing;
+            updateConfigSummary();
+        };
+        
+        // 重新切割按鈕
+        document.querySelectorAll('.reparse-btn').forEach(btn => {
+            btn.onclick = async function() {
+                const type = this.getAttribute('data-type');
+                await reparseCurrentFile(type);
+            };
+        });
+    }
+
+    // 更新參數顯示
+    function updateParamDisplay(type) {
+        const params = cutParams[type];
+        
+        if (type === 'ans') {
+            document.getElementById('ans_v_y').innerText = params.yThreshold.toFixed(1);
+            document.getElementById('ans_v_x').innerText = params.xThreshold.toFixed(1);
+            document.getElementById('ans_v_th').innerText = params.trimHeader;
+            document.getElementById('ans_v_tf').innerText = params.trimFooter;
+            document.getElementById('ans_v_w').innerText = params.charWidth;
+        } else {
+            document.getElementById('quiz_v_y').innerText = params.yThreshold.toFixed(1);
+            document.getElementById('quiz_v_x').innerText = params.xThreshold.toFixed(1);
+            document.getElementById('quiz_v_th').innerText = params.trimHeader;
+            document.getElementById('quiz_v_tf').innerText = params.trimFooter;
+            document.getElementById('quiz_v_s').innerText = params.optionSpacing;
+        }
+    }
+
+    // 重新切割當前檔案
+    async function reparseCurrentFile(type) {
+        const activeItem = document.querySelector('.file-item.active');
+        if (!activeItem) {
+            showUpdateStatus('請先選擇一個檔案！', true);
+            return;
+        }
+        
+        const activeTitle = activeItem.textContent.replace('📄 ', '');
+        let foundFile = null;
+        
+        // 尋找對應的檔案
+        for (let key in examPool) {
+            if (examPool[key].title === activeTitle) {
+                foundFile = examPool[key];
+                break;
+            }
+        }
+        
+        if (!foundFile) {
+            showUpdateStatus('找不到對應的檔案！', true);
+            return;
+        }
+        
+        try {
+            showUpdateStatus(`正在重新切割${type === 'ans' ? '答案卷' : '問卷'}...`);
+            
+            let newText = "";
+            if (type === 'ans' && foundFile.ans) {
+                console.log(`重新切割答案卷，使用參數:`, cutParams.ans);
+                newText = await getPdfTextWithCutParams(foundFile.ans, 'ans');
+                lastAnsRawText = newText;
+                
+                // 重新提取答案
+                const result = extractAnswersWithCutAnalysis('ans');
+                
+                // 更新預覽
+                showPdfPreview('ans');
+                
+                // 更新答案網格
+                updateVisualGrid();
+                
+                // 顯示切割分析
+                showCutAnalysis();
+                
+                // 更新狀態顯示
+                const multiLetterCount = fullAnsSequence.filter(a => a && a.length > 1).length;
+                document.getElementById('ans-count').textContent = fullAnsSequence.filter(a => a && a !== "").length;
+                
+                showUpdateStatus(`✅ 答案卷重新切割完成！找到 ${fullAnsSequence.filter(a => a).length} 個答案，${multiLetterCount} 個多字母答案`);
+                
+            } else if (type === 'quiz' && foundFile.exam) {
+                console.log(`重新切割問卷，使用參數:`, cutParams.quiz);
+                newText = await getPdfTextWithCutParams(foundFile.exam, 'quiz');
+                rawExamText = newText;
+                
+                // 更新預覽
+                showPdfPreview('quiz');
+                
+                // 重新解析問卷
+                runParser();
+                
+                showUpdateStatus(`✅ 問卷重新切割完成！解析出 ${finalData.length} 個題目`);
+            } else {
+                showUpdateStatus('找不到對應的檔案類型！', true);
+                return;
+            }
+            
+            // 更新統計資訊
+            updateStats();
+            
+        } catch (error) {
+            console.error('重新切割時發生錯誤:', error);
+            showUpdateStatus(`❌ 重新切割失敗: ${error.message}`, true);
+        }
+    }
+
+    // 更新統計資訊
+    function updateStats() {
+        const parseStats = document.getElementById('parse-stats');
+        if (!parseStats) return;
+        
+        const multiLetterCount = fullAnsSequence.filter(a => a && a.length > 1).length;
+        const debugInfo = `
+            題目總數：${finalData.length}<br>
+            答案數：${fullAnsSequence.filter(a => a).length}/50<br>
+            多字母答案：${multiLetterCount} 個（可能切割錯誤）<br>
+            當前模式：${currentFileType === 'ans' ? '答案卷' : '問卷'}
+        `;
+        
+        parseStats.innerHTML = `題目：${finalData.length} / 答案：${fullAnsSequence.filter(a => a).length} <div class="debug-info">${debugInfo}</div>`;
+    }
+
+    // 模式切換
+    document.getElementById('toggleModeBtn').onclick = () => { 
+        isEditMode = !isEditMode; 
+        updateModeUI(); 
+    };
+
     function updateModeUI() {
         const zone = document.getElementById('adjustment-zone');
         const btn = document.getElementById('toggleModeBtn');
-        if(isEditMode) {
-            zone.style.display = "block";
-            btn.innerText = "✍️ 切換至：作答模式";
-            btn.style.background = "var(--warning)";
-        } else {
-            zone.style.display = "none";
-            btn.innerText = "🛠️ 切換至：校正模式";
-            btn.style.background = "var(--dark)";
-        }
+        zone.style.display = isEditMode ? "block" : "none";
+        btn.innerText = isEditMode ? "✍️ 返回：作答模式" : "🛠️ 進入：校正模式";
+        btn.style.background = isEditMode ? "var(--warning)" : "var(--dark)";
     }
-    updateModeUI();
-    document.getElementById('toggleModeBtn').onclick = () => { isEditMode = !isEditMode; updateModeUI(); };
 
-    // 初始化答案格
+    // 初始化答案網格
     function initGrid() {
         const grid = document.getElementById('visualAnsGrid');
+        if (!grid) return;
+        
         grid.innerHTML = "";
         for (let i = 1; i <= 50; i++) {
-            grid.innerHTML += `<div class="ans-unit"><span>${i}</span><input type="text" maxlength="1" id="ansInp-${i}"></div>`;
+            grid.innerHTML += `<div class="ans-unit" id="unit-${i}"><span>${i}</span><input type="text" id="ansInp-${i}"></div>`;
         }
     }
-    initGrid();
-    loadRecords();
 
-    // 檔案處理
+    // 更新視覺化網格
+    function updateVisualGrid() {
+        try {
+            for (let i = 1; i <= 50; i++) {
+                const input = document.getElementById(`ansInp-${i}`);
+                const unit = document.getElementById(`unit-${i}`);
+                if (!input) continue;
+                
+                let val = "";
+                const seqIdx = i - 1;
+
+                if (seqIdx >= 0 && seqIdx < fullAnsSequence.length) {
+                    val = fullAnsSequence[seqIdx] || "";
+                }
+
+                input.value = val;
+                
+                // 更新格子樣式
+                if (unit) {
+                    unit.classList.remove('multi-letter', 'cut-problem');
+                    
+                    // 標記切割問題
+                    if (val && val.length > 1 && /^[A-E]+$/i.test(val)) {
+                        unit.classList.add('multi-letter');
+                        unit.classList.add('cut-problem');
+                        unit.title = `切割問題：多字母答案 "${val}"`;
+                    }
+                }
+            }
+            
+            // 更新答案數量顯示
+            const ansCount = document.getElementById('ans-count');
+            if (ansCount) {
+                ansCount.textContent = fullAnsSequence.filter(a => a && a !== "").length;
+            }
+        } catch (error) {
+            console.error('更新視覺化格子時發生錯誤:', error);
+        }
+    }
+
+    // 改進的PDF文字提取函數，支援獨立參數
+    async function getPdfTextWithCutParams(file, type = 'ans') {
+        const params = cutParams[type];
+        const doc = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+        let text = "";
+        
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const content = await page.getTextContent();
+            const items = content.items;
+            
+            // 按Y座標排序
+            items.sort((a, b) => {
+                if (Math.abs(a.transform[5] - b.transform[5]) > params.yThreshold) {
+                    return b.transform[5] - a.transform[5];
+                } else {
+                    return a.transform[4] - b.transform[4];
+                }
+            });
+            
+            // 分組成行
+            const lines = [];
+            let currentLine = [];
+            let lastY = null;
+            
+            for (let item of items) {
+                if (lastY === null) {
+                    currentLine.push(item);
+                } else if (Math.abs(lastY - item.transform[5]) <= params.yThreshold) {
+                    currentLine.push(item);
+                } else {
+                    lines.push(currentLine);
+                    currentLine = [item];
+                }
+                lastY = item.transform[5];
+            }
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+            
+            // 處理每一行
+            for (let line of lines) {
+                line.sort((a, b) => a.transform[4] - b.transform[4]);
+                let lineText = "";
+                let lastX = null;
+                
+                for (let item of line) {
+                    if (lastX !== null) {
+                        const xGap = item.transform[4] - lastX;
+                        let charWidthEstimate = params.charWidth || 10;
+                        
+                        if (type === 'quiz') {
+                            // 問卷使用選項間距
+                            charWidthEstimate = params.optionSpacing || 15;
+                        }
+                        
+                        if (xGap > charWidthEstimate) {
+                            const spaces = Math.floor(xGap / charWidthEstimate);
+                            lineText += " ".repeat(Math.max(1, Math.min(3, spaces)));
+                        }
+                    }
+                    
+                    lineText += item.str;
+                    lastX = item.transform[4] + (item.width || 0);
+                }
+                
+                text += lineText + "\n";
+            }
+        }
+        
+        // 特殊字元替換
+        text = text.replace(//g,"(A)")
+                   .replace(//g,"(B)")
+                   .replace(//g,"(C)")
+                   .replace(//g,"(D)")
+                   .replace(//g,"(E)");
+        
+        // 應用頁首切除
+        if (params.trimHeader > 0 && text.length > params.trimHeader) {
+            text = text.substring(params.trimHeader);
+        }
+        
+        // 應用頁尾切除
+        if (params.trimFooter > 0 && text.length > params.trimFooter) {
+            text = text.substring(0, text.length - params.trimFooter);
+        }
+        
+        return text;
+    }
+
+    // 顯示PDF預覽
+    function showPdfPreview(type = 'ans') {
+        const previewBox = document.getElementById('pdfPreview');
+        if (!previewBox) return;
+        
+        let textToPreview = "";
+        if (type === 'ans' && lastAnsRawText) {
+            textToPreview = lastAnsRawText;
+        } else if (type === 'quiz' && rawExamText) {
+            textToPreview = rawExamText;
+        } else {
+            previewBox.innerHTML = "<div style='color:#666; font-style:italic;'>尚未載入檔案</div>";
+            return;
+        }
+        
+        // 取前300字顯示
+        pdfPreviewText = textToPreview.substring(0, 300);
+        let previewHTML = "";
+        
+        const lines = pdfPreviewText.split('\n');
+        for (let i = 0; i < Math.min(20, lines.length); i++) {
+            let line = lines[i];
+            const isAnswerLine = line.includes('答案') || /\b[A-E]{1,2}\b/.test(line);
+            previewHTML += `<div class="preview-line ${isAnswerLine ? 'highlight' : ''}">${escapeHtml(line)}</div>`;
+        }
+        
+        if (lines.length > 20) {
+            previewHTML += `<div style="color:#666; font-style:italic;">...（還有 ${lines.length - 20} 行）</div>`;
+        }
+        
+        previewBox.innerHTML = previewHTML;
+    }
+
+    // 檔案選擇處理
     document.getElementById('folderInput').onchange = function(e) {
         const files = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
         const pairs = {};
+        
         files.forEach(f => {
-            const code = f.name.substring(0, 6);
-            const isAns = f.name.includes('_ANS');
-            const sub = f.name.split('_').pop().replace('.pdf', '');
-            const k = code + sub;
-            if (!pairs[k]) pairs[k] = { title: `${code} ${sub}`, exam: null, ans: null };
-            if (isAns) pairs[k].ans = f; else pairs[k].exam = f;
+            const name = f.name;
+            const year = name.substring(0, 6);
+            const isMod = name.includes('_MOD');
+            const isAns = name.includes('_ANS') && !isMod;
+            const subject = name.split('_').pop().replace('.pdf', '');
+            const key = year + subject;
+            
+            if (!pairs[key]) {
+                pairs[key] = { 
+                    title: `${year} ${subject}`, 
+                    exam: null, 
+                    ans: null, 
+                    type: null 
+                };
+            }
+            
+            if (!isMod && !isAns) {
+                pairs[key].exam = f;
+            } else if (isMod) { 
+                pairs[key].ans = f; 
+                pairs[key].type = 'MOD'; 
+            } else if (isAns && pairs[key].type !== 'MOD') { 
+                pairs[key].ans = f; 
+                pairs[key].type = 'ANS'; 
+            }
         });
+        
         const listDiv = document.getElementById('file-list');
-        listDiv.innerHTML = ""; examPool = pairs;
+        listDiv.innerHTML = ""; 
+        examPool = pairs;
+        
         for (let k in pairs) {
             if (pairs[k].exam && pairs[k].ans) {
                 const item = document.createElement('div');
                 item.className = 'file-item';
                 item.innerText = `📄 ${pairs[k].title}`;
-                item.onclick = () => {
+                item.onclick = async () => {
                     document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
-                    loadExam(k);
-                    startTimer(); // 選取檔案即開始計時
+                    await loadExam(k);
                 };
                 listDiv.appendChild(item);
             }
         }
+        
+        if (Object.keys(pairs).length > 0) {
+            updateConfigSummary();
+        }
     };
 
+    // 載入考卷
     async function loadExam(key) {
-        const pair = examPool[key];
-        document.getElementById('current-title').innerText = pair.title;
-        const yVal = parseInt(document.getElementById('yThreshold').value);
-        rawExamText = await getPdfText_v12(pair.exam, yVal);
-        const rawAnsText = await getPdfText_v12(pair.ans, 10);
-        fullAnsSequence = rawAnsText.match(/[A-E]/g) || [];
-        updateVisualGrid();
-        runParser();
-    }
-
-    function updateVisualGrid() {
-        const offset = parseInt(document.getElementById('ansOffset').value);
-        for (let i = 1; i <= 50; i++) {
-            const targetIdx = i - 1 + offset; 
-            const inp = document.getElementById(`ansInp-${i}`);
-            inp.value = (targetIdx >= 0 && targetIdx < fullAnsSequence.length) ? fullAnsSequence[targetIdx] : "";
+        try {
+            const pair = examPool[key];
+            if (!pair) return;
+            
+            document.getElementById('current-title').innerText = pair.title;
+            showUpdateStatus('正在載入考卷...');
+            
+            // 使用各自的參數載入答案卷和問卷
+            if (pair.exam) {
+                rawExamText = await getPdfTextWithCutParams(pair.exam, 'quiz');
+            }
+            
+            if (pair.ans) {
+                lastAnsRawText = await getPdfTextWithCutParams(pair.ans, 'ans');
+            }
+            
+            // 顯示預覽
+            showPdfPreview(currentFileType);
+            
+            // 提取答案
+            extractAnswersWithCutAnalysis('ans');
+            
+            // 初始化格子
+            initGrid();
+            updateVisualGrid();
+            
+            if (pair.exam) {
+                runParser();
+            }
+            
+            startTimer();
+            
+            // 顯示切割分析
+            showCutAnalysis();
+            
+            // 顯示控制按鈕組
+            document.getElementById('control-buttons').style.display = 'flex';
+            
+            showUpdateStatus('✅ 考卷載入完成！');
+            
+        } catch (error) {
+            console.error('載入考卷時發生錯誤:', error);
+            showUpdateStatus(`❌ 載入失敗: ${error.message}`, true);
         }
     }
 
-    async function getPdfText_v12(file, yThres) {
-        const doc = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-        let fullText = "";
-        for (let i = 1; i <= doc.numPages; i++) {
-            const page = await doc.getPage(i);
-            const content = await page.getTextContent();
-            const items = content.items.sort((a, b) => {
-                const ay = a.transform[5], by = b.transform[5];
-                if (Math.abs(ay - by) > yThres) return by - ay;
-                return a.transform[4] - b.transform[4];
-            });
-            let line = ""; let lastY = null;
-            items.forEach(it => {
-                if (lastY !== null && Math.abs(lastY - it.transform[5]) > yThres) { fullText += line + "\n"; line = ""; }
-                line += it.str; lastY = it.transform[5];
-            });
-            fullText += line + "\n";
+    // 提取答案並分析切割問題
+    function extractAnswersWithCutAnalysis(type = 'ans') {
+        fullAnsSequence = new Array(50).fill("");
+        
+        if (!lastAnsRawText) return;
+        
+        console.log(`${type === 'ans' ? '答案卷' : '問卷'}解析文字（前500字）:`, lastAnsRawText.substring(0, 500));
+        
+        // 分析文字結構
+        const lines = lastAnsRawText.split('\n');
+        let answerLines = [];
+        let problemLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line.includes('答案') || /\d+\s+[A-E]{1,2}/.test(line)) {
+                answerLines.push({
+                    line: line,
+                    index: i,
+                    hasMultiLetter: /[A-E]{2,}/.test(line),
+                    isProblem: /[A-E]{2,}/.test(line) && !line.includes('答案')
+                });
+                
+                if (/[A-E]{2,}/.test(line) && !line.includes('答案')) {
+                    problemLines.push({
+                        line: line,
+                        index: i,
+                        problem: "可能誤判的複選答案"
+                    });
+                }
+            }
         }
-        return fullText.replace(//g,"(A)").replace(//g,"(B)").replace(//g,"(C)").replace(//g,"(D)");
+        
+        // 提取答案
+        const answerRegex = /[A-E#]{1,2}/g;
+        const allAnswers = lastAnsRawText.match(answerRegex);
+        
+        if (allAnswers) {
+            console.log("找到的答案:", allAnswers);
+            
+            for (let i = 0; i < Math.min(50, allAnswers.length); i++) {
+                fullAnsSequence[i] = allAnswers[i].toUpperCase();
+            }
+        }
+        
+        // 更新答案數量顯示
+        const ansCount = document.getElementById('ans-count');
+        if (ansCount) {
+            ansCount.textContent = fullAnsSequence.filter(a => a && a !== "").length;
+        }
+        
+        return { answerLines, problemLines };
     }
 
+    // 顯示切割分析
+    function showCutAnalysis() {
+        const analysisBox = document.getElementById('cut-analysis');
+        if (!analysisBox) return;
+        
+        const { answerLines, problemLines } = extractAnswersWithCutAnalysis('ans');
+        
+        let analysisHTML = '<h4>✂️ PDF切割分析報告</h4>';
+        
+        if (problemLines.length > 0) {
+            analysisHTML += `<div style="color:#666; margin-bottom:10px; padding:10px; background:#f8f9fa; border-radius:5px;">
+                <strong>⚠️ 檢測到 ${problemLines.length} 個可能誤判的行：</strong>
+                <div style="font-size:12px; margin-top:5px;">
+                    ${problemLines.map(p => `行${p.index+1}: "${escapeHtml(p.line.substring(0,50))}..."`).join('<br>')}
+                </div>
+            </div>`;
+        } else {
+            analysisHTML += `<div style="color:#666; margin-bottom:10px; padding:10px; background:#f8f9fa; border-radius:5px;">
+                <strong>✓ PDF切割正常，未檢測到明顯問題</strong>
+            </div>`;
+        }
+        
+        // 顯示當前參數
+        const currentParams = cutParams[currentFileType];
+        analysisHTML += `<div style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
+            <strong>當前${currentFileType === 'ans' ? '答案卷' : '問卷'}切割參數：</strong><br>
+            • Y座標閾值: ${currentParams.yThreshold}px<br>
+            • X座標閾值: ${currentParams.xThreshold}px<br>
+            • 頁首切除: ${currentParams.trimHeader}字<br>
+            • 頁尾切除: ${currentParams.trimFooter}字<br>
+            ${currentFileType === 'ans' ? `• 字元寬度: ${currentParams.charWidth}px` : `• 選項間距: ${currentParams.optionSpacing}px`}
+            <br><br>
+            <strong>調整建議：</strong><br>
+            1. 如果出現"AA"、"CD"等誤判，增加Y閾值<br>
+            2. 如果答案分散在不同行，減少Y閾值<br>
+            3. 調整後點擊"重新切割"按鈕
+        </div>`;
+        
+        analysisBox.innerHTML = analysisHTML;
+    }
+
+    // 解析問卷
     function runParser() {
         if(!rawExamText) return;
-        const trimLen = parseInt(document.getElementById('trimHeader').value);
-        let processedText = rawExamText.substring(trimLen);
+        
+        let txt = rawExamText;
+        
         const qRegex = /(?:^|\n)\s*(\d{1,2})\s+([\s\S]*?)(?=(?:\n\s*)\d{1,2}\s+|$)/g;
-        finalData = []; let m;
-        while ((m = qRegex.exec(processedText)) !== null) {
+        finalData = []; 
+        let m;
+        
+        while ((m = qRegex.exec(txt)) !== null) {
             const id = parseInt(m[1]);
             const block = m[2];
-            const optRegex = /\(([A-D])\)\s*([\s\S]*?)(?=\s*\([A-D]\)|$)/g;
-            const options = []; let o;
-            while ((o = optRegex.exec(block)) !== null) {
-                options.push({ label: o[1], text: o[2].trim().replace(/\n/g, "") });
+            
+            const optRegex = /\(([A-E])\)\s*([\s\S]*?)(?=\s*\([A-E]\)|$)/g;
+            const opts = []; 
+            let o;
+            
+            while((o = optRegex.exec(block)) !== null) {
+                opts.push({ 
+                    label: o[1], 
+                    text: o[2].trim().replace(/\n/g,"") 
+                });
             }
-            if (options.length >= 4) {
-                const manualAns = document.getElementById(`ansInp-${id}`).value.toUpperCase() || "?";
-                finalData.push({ id, content: block.split("(A)")[0].trim().replace(/\n/g, ""), options: options.slice(0, 4), correct: manualAns });
+            
+            if(opts.length >= 4) {
+                const answerInput = document.getElementById(`ansInp-${id}`);
+                let correctAnswer = answerInput ? answerInput.value : "";
+                
+                finalData.push({ 
+                    id, 
+                    content: block.split("(A)")[0].trim().replace(/\n/g,""), 
+                    options: opts, 
+                    correct: correctAnswer,
+                    singlePoints: 2
+                });
             }
         }
+        
+        // 更新統計
+        updateStats();
+        
+        // 渲染UI
         renderUI();
     }
 
+    // 渲染UI - 移除所有預設綠色底色
     function renderUI() {
-        const box = document.getElementById("quiz-box");
-        box.innerHTML = finalData.map(q => `
-            <div class="quiz-card">
-                <b>第 ${q.id} 題：${q.content}</b>
-                <div class="options-list">${q.options.map(o => `<label><input type="radio" name="q${q.id}" value="${o.label}"> (${o.label}) ${o.text}</label>`).join('')}</div>
-                <div class="correct-ans" id="ans-${q.id}">【正確答案：${q.correct}】</div>
-            </div>
-        `).join("");
-        document.getElementById("submitBtn").style.display = finalData.length ? "block" : "none";
+        const quizBox = document.getElementById("quiz-box");
+        if (!quizBox) return;
+        
+        quizBox.innerHTML = finalData.map(q => {
+            // 獲取使用者先前選擇的答案
+            const userAnswer = userAnswers[q.id] || '';
+            
+            // 生成選項HTML - 移除所有預設顏色
+            const optionsHTML = q.options.map(o => {
+                const isSelected = userAnswer === o.label;
+                const isCorrect = q.correct === o.label;
+                let className = '';
+                
+                // 只在對答案後才添加顏色類別
+                if (isSelected) {
+                    className = 'selected';
+                }
+                
+                return `
+                    <label class="${className.trim()}">
+                        <input type="radio" name="q${q.id}" value="${o.label}" 
+                               ${isSelected ? 'checked' : ''} onchange="saveAnswer(${q.id}, '${o.label}')">
+                        (${o.label}) ${escapeHtml(o.text)}
+                    </label>
+                `;
+            }).join("");
+            
+            // 生成狀態標示 - 移除預設標示
+            let statusHTML = '';
+            
+            return `
+                <div class="quiz-card" id="card-${q.id}">
+                    <div class="question-header">
+                        <div class="question-title">第 ${q.id} 題</div>
+                        <div class="question-points">${q.singlePoints}分</div>
+                    </div>
+                    <div style="margin-bottom: 15px; color: #2c3e50; font-weight: normal; line-height: 1.5;">
+                        ${escapeHtml(q.content)}
+                    </div>
+                    ${statusHTML}
+                    <div class="options-list">
+                        ${optionsHTML}
+                    </div>
+                    ${q.correct && q.correct !== '' ? 
+                        `<div class="correct-ans" id="ans-${q.id}" style="display:none;">【正確答案：${q.correct}】</div>` : 
+                        ''
+                    }
+                </div>
+            `;
+        }).join("");
     }
 
-    // 計時器邏輯
+    // 儲存使用者答案
+    function saveAnswer(questionId, answer) {
+        userAnswers[questionId] = answer;
+        console.log(`儲存答案：第 ${questionId} 題 = ${answer}`);
+        
+        // 更新選項樣式
+        const card = document.getElementById(`card-${questionId}`);
+        if (card) {
+            // 移除所有選項的selected類別
+            const labels = card.querySelectorAll('.options-list label');
+            labels.forEach(label => {
+                label.classList.remove('selected');
+            });
+            
+            // 添加當前選擇的選項selected類別
+            const selectedLabel = card.querySelector(`input[value="${answer}"]`).parentElement;
+            if (selectedLabel) {
+                selectedLabel.classList.add('selected');
+            }
+        }
+    }
+
+    // 送出所有答案
+    function submitAllAnswers() {
+        const unansweredCount = finalData.filter(q => !userAnswers[q.id] || userAnswers[q.id] === '').length;
+        
+        if (unansweredCount > 0) {
+            if (!confirm(`您還有 ${unansweredCount} 題未作答，確定要送出嗎？`)) {
+                return;
+            }
+        }
+        
+        showUpdateStatus('答案已送出！您可以現在對答案或稍後計算分數。');
+    }
+
+    // 對答案
+    function checkAllAnswers() {
+        if (!finalData.length) {
+            showUpdateStatus('請先載入考卷！', true);
+            return;
+        }
+        
+        // 檢查是否有正確答案
+        const hasCorrectAnswers = finalData.some(q => q.correct && q.correct !== '');
+        if (!hasCorrectAnswers) {
+            showUpdateStatus('請先載入答案卷！', true);
+            return;
+        }
+        
+        // 更新所有題目的顯示狀態
+        finalData.forEach(q => {
+            const card = document.getElementById(`card-${q.id}`);
+            const userAnswer = userAnswers[q.id] || '';
+            const correctAnswer = q.correct || '';
+            
+            if (card) {
+                card.classList.remove('correct', 'incorrect', 'unanswered');
+                
+                if (userAnswer === '') {
+                    card.classList.add('unanswered');
+                } else if (userAnswer === correctAnswer) {
+                    card.classList.add('correct');
+                } else {
+                    card.classList.add('incorrect');
+                }
+                
+                // 更新選項樣式
+                const labels = card.querySelectorAll('.options-list label');
+                labels.forEach(label => {
+                    label.classList.remove('correct-option', 'incorrect-option');
+                    
+                    const optionValue = label.querySelector('input').value;
+                    if (optionValue === correctAnswer) {
+                        label.classList.add('correct-option');
+                    }
+                    if (userAnswer === optionValue && userAnswer !== correctAnswer) {
+                        label.classList.add('incorrect-option');
+                    }
+                });
+                
+                // 顯示正確答案
+                const correctAnsDiv = document.getElementById(`ans-${q.id}`);
+                if (correctAnsDiv) {
+                    correctAnsDiv.style.display = 'block';
+                }
+            }
+        });
+        
+        showUpdateStatus('答案比對完成！淡綠色表示正確，淡紅色表示錯誤，淡灰色表示未作答。');
+    }
+
+    // 計算分數
+    function calculateScore() {
+        if (!finalData.length) {
+            showUpdateStatus('請先載入考卷！', true);
+            return;
+        }
+        
+        // 檢查是否有正確答案
+        const hasCorrectAnswers = finalData.some(q => q.correct && q.correct !== '');
+        if (!hasCorrectAnswers) {
+            showUpdateStatus('請先載入答案卷！', true);
+            return;
+        }
+        
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let unansweredCount = 0;
+        let totalScore = 0;
+        let maxScore = 0;
+        
+        examResults = [];
+        
+        // 計算分數
+        finalData.forEach(q => {
+            const userAnswer = userAnswers[q.id] || '';
+            const correctAnswer = q.correct || '';
+            const points = q.singlePoints || 2;
+            maxScore += points;
+            
+            let result = {
+                id: q.id,
+                correctAnswer: correctAnswer,
+                userAnswer: userAnswer,
+                points: points,
+                score: 0,
+                status: 'unanswered'
+            };
+            
+            if (userAnswer === '') {
+                unansweredCount++;
+                result.status = 'unanswered';
+            } else if (userAnswer === correctAnswer) {
+                correctCount++;
+                totalScore += points;
+                result.score = points;
+                result.status = 'correct';
+            } else {
+                incorrectCount++;
+                result.status = 'incorrect';
+            }
+            
+            examResults.push(result);
+        });
+        
+        // 計算正確率
+        const accuracyRate = correctCount > 0 ? (correctCount / (correctCount + incorrectCount) * 100).toFixed(1) : 0;
+        const percentage = (totalScore / maxScore * 100).toFixed(1);
+        
+        // 顯示分數
+        document.getElementById('score-box').style.display = 'block';
+        document.getElementById('total-score').textContent = totalScore;
+        document.getElementById('score-percentage').textContent = `${percentage}%`;
+        document.getElementById('correct-count').textContent = correctCount;
+        document.getElementById('incorrect-count').textContent = incorrectCount;
+        document.getElementById('unanswered-count').textContent = unansweredCount;
+        document.getElementById('accuracy-rate').textContent = `${accuracyRate}%`;
+        
+        // 顯示詳細報告
+        showScoreDetails();
+        
+        showUpdateStatus(`分數計算完成！您的得分：${totalScore}/${maxScore} (${percentage}%)`);
+    }
+
+    // 顯示分數詳細資訊
+    function showScoreDetails() {
+        const detailsDiv = document.getElementById('score-details');
+        const tableBody = document.getElementById('score-table-body');
+        
+        if (!detailsDiv || !tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        examResults.forEach(result => {
+            const row = document.createElement('tr');
+            
+            // 狀態標示
+            let statusHTML = '';
+            let statusClass = '';
+            switch(result.status) {
+                case 'correct':
+                    statusHTML = '<span style="color:#28a745;">✓ 正確</span>';
+                    statusClass = 'table-success';
+                    break;
+                case 'incorrect':
+                    statusHTML = '<span style="color:#dc3545;">✗ 錯誤</span>';
+                    statusClass = 'table-danger';
+                    break;
+                case 'unanswered':
+                    statusHTML = '<span style="color:#6c757d;">○ 未答</span>';
+                    statusClass = 'table-secondary';
+                    break;
+            }
+            
+            row.className = statusClass;
+            row.innerHTML = `
+                <td>${result.id}</td>
+                <td>${result.correctAnswer || '未載入'}</td>
+                <td>${result.userAnswer || '未作答'}</td>
+                <td>${statusHTML}</td>
+                <td>${result.score}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        detailsDiv.style.display = 'block';
+    }
+
+    // 重設所有答案
+    function resetAllAnswers() {
+        if (!confirm('確定要重設所有答案嗎？這將清除您所有的作答紀錄。')) {
+            return;
+        }
+        
+        userAnswers = {};
+        examResults = [];
+        
+        // 隱藏分數顯示
+        document.getElementById('score-box').style.display = 'none';
+        document.getElementById('score-details').style.display = 'none';
+        
+        // 重新渲染UI
+        renderUI();
+        
+        showUpdateStatus('所有答案已重設！');
+    }
+
+    // 計時器
     function startTimer() {
-        resetTimer();
-        startTime = Date.now();
+        let s = 0; 
+        clearInterval(timerInterval);
         timerInterval = setInterval(() => {
-            elapsedTime = Date.now() - startTime;
-            document.getElementById('timer-display').innerText = formatTime(elapsedTime);
+            s++;
+            let h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+            const timerDisplay = document.getElementById('timer-display');
+            if (timerDisplay) {
+                timerDisplay.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+            }
         }, 1000);
     }
-    function stopTimer() { clearInterval(timerInterval); }
-    function resetTimer() { stopTimer(); elapsedTime = 0; document.getElementById('timer-display').innerText = "00:00:00"; }
-    function formatTime(ms) {
-        let s = Math.floor(ms / 1000);
-        let h = Math.floor(s / 3600);
-        let m = Math.floor((s % 3600) / 60);
-        s = s % 60;
-        return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+
+    // HTML轉義
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;")
+                   .replace(/</g, "&lt;")
+                   .replace(/>/g, "&gt;")
+                   .replace(/"/g, "&quot;")
+                   .replace(/'/g, "&#039;");
     }
 
-    // 成績儲存與讀取
-    function saveRecord(title, score, timeStr) {
-        const records = JSON.parse(localStorage.getItem('examRecords') || "[]");
-        records.unshift({ date: new Date().toLocaleDateString(), title, score, time: timeStr });
-        localStorage.setItem('examRecords', JSON.stringify(records.slice(0, 10)));
-        loadRecords();
+    // 匯出功能
+    function exportToCSV() {
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + "題號,答案\n" 
+            + fullAnsSequence.map((ans, idx) => `${idx + 1},${ans}`).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "答案匯出.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
-    function loadRecords() {
-        const records = JSON.parse(localStorage.getItem('examRecords') || "[]");
-        const list = document.getElementById('record-list');
-        list.innerHTML = records.map(r => `
-            <div class="record-item">
-                <span><b>${r.score}分</b> <small>${r.title}</small></span>
-                <span style="color:#999">${r.time}</span>
-            </div>
-        `).join("");
+
+    // 清空紀錄
+    function clearRecords() {
+        if(confirm("確定要清空所有紀錄嗎？")) {
+            localStorage.clear();
+            fullAnsSequence = new Array(50).fill("");
+            userAnswers = {};
+            examResults = [];
+            updateVisualGrid();
+            showUpdateStatus("紀錄已清空！");
+        }
     }
-    function clearRecords() { localStorage.removeItem('examRecords'); loadRecords(); }
 
-    // 評分與總結
-    document.getElementById("submitBtn").onclick = () => {
-        stopTimer();
-        let correctCount = 0;
-        finalData.forEach(q => {
-            const displayAns = document.getElementById(`ans-${q.id}`);
-            displayAns.style.display = "block";
-            const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
-            if (selected && selected.value === q.correct) correctCount++;
-        });
-        const score = Math.round((correctCount / finalData.length) * 100);
-        const timeUsed = document.getElementById('timer-display').innerText;
-        alert(`測驗結束！得分：${score}\n花費時間：${timeUsed}`);
-        saveRecord(document.getElementById('current-title').innerText, score, timeUsed);
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    };
-
-    // 滑桿連動
-    document.getElementById('ansOffset').oninput = function() { document.getElementById('v_off').innerText = this.value; updateVisualGrid(); };
-    document.getElementById('yThreshold').oninput = function() { document.getElementById('v_y').innerText = this.value; };
-    document.getElementById('trimHeader').oninput = function() { document.getElementById('v_t').innerText = this.value; };
-    document.getElementById('applyBtn').onclick = runParser;
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initCutControls();
+        initGrid();
+        updateConfigSummary();
+        updateTrimInfoDisplay();
+        
+        // 預設顯示答案卷設定
+        switchFileType('ans');
+    });
 </script>
 </body>
-</html> 
+</html>
