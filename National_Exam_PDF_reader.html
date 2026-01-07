@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>國考模擬系統 v22 - 全功能實戰版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        :root { --primary: #3498db; --success: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; --bg: #f4f7f6; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); display: flex; gap: 20px; margin: 0; height: 100vh; overflow: hidden; padding: 15px; box-sizing: border-box; }
+        
+        /* 側邊欄 */
+        .sidebar { width: 380px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-y: auto; height: 100%; display: flex; flex-direction: column; }
+        .main-content { flex: 1; background: #fff; padding: 25px; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); overflow-y: auto; height: 100%; border: 2px solid #eee; position: relative; }
+
+        /* 計時器樣式 */
+        .timer-box { background: var(--dark); color: #fff; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        #timer-display { font-family: monospace; font-size: 28px; font-weight: bold; display: block; color: #5dade2; }
+
+        /* 成績紀錄牆 */
+        .record-wall { background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-top: 15px; font-size: 13px; }
+        .record-item { border-bottom: 1px solid #eee; padding: 5px 0; display: flex; justify-content: space-between; }
+        .record-item:last-child { border: none; }
+
+        /* 模式切換 */
+        .btn-mode { background: var(--dark); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 15px; }
+        .edit-only { display: block; } /* 校正模式專用 */
+
+        .config-panel { background: #fff3e0; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; border-left: 5px solid var(--warning); }
+        .ans-panel { background: #e8f5e9; padding: 12px; border-radius: 8px; border: 1px solid #27ae60; margin-bottom: 15px; }
+        
+        .ans-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 10px; background: #fff; padding: 5px; border: 1px solid #ddd; }
+        .ans-unit { display: flex; flex-direction: column; align-items: center; border: 1px solid #eee; padding: 2px; border-radius: 4px; font-size: 11px; }
+        .ans-unit input { width: 25px; text-align: center; font-size: 14px; font-weight: bold; color: var(--primary); border: 1px solid #ccc; }
+
+        /* 題目樣式 */
+        .quiz-card { border-left: 6px solid var(--primary); padding: 20px; margin-bottom: 20px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .options-list label { display: block; padding: 10px; margin: 5px 0; border: 1px solid #eee; border-radius: 6px; cursor: pointer; }
+        .correct-ans { display: none; margin-top: 10px; padding: 10px; border-radius: 5px; font-weight: bold; background: #eafaf1; color: #27ae60; border: 1px dashed #27ae60; }
+        
+        .file-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; }
+        .file-item.active { background: #e3f2fd; font-weight: bold; border-left: 4px solid var(--primary); }
+        button { border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: var(--primary); color: white; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <button id="toggleModeBtn" class="btn-mode">🛠️ 切換至：校正模式</button>
+
+    <div class="timer-box">
+        <span id="timer-display">00:00:00</span>
+        <div style="margin-top:5px;">
+            <button onclick="stopTimer()" style="background:#666; font-size:11px; padding:4px 8px;">暫停</button>
+            <button onclick="resetTimer()" style="background:#888; font-size:11px; padding:4px 8px;">重置</button>
+        </div>
+    </div>
+
+    <div style="margin-bottom:15px;">
+        <input type="file" id="folderInput" webkitdirectory directory multiple>
+        <div id="file-list" style="margin-top:10px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;"></div>
+    </div>
+
+    <div id="adjustment-zone" class="edit-only">
+        <div class="config-panel">
+            <strong>⚙️ 題目參數</strong><br>
+            Y-Shift: <input type="range" id="yThreshold" min="1" max="25" value="8"> <span id="v_y">8</span><br>
+            頁首切除: <input type="range" id="trimHeader" min="0" max="1500" value="200"> <span id="v_t">200</span>
+        </div>
+        <div class="ans-panel">
+            <strong>🎯 答案修正 (偏移量: <span id="v_off">0</span>)</strong>
+            <input type="range" id="ansOffset" min="-50" max="50" value="0" style="width:100%">
+            <div class="ans-grid" id="visualAnsGrid"></div>
+        </div>
+        <button class="btn-blue" id="applyBtn" style="margin-bottom:15px;">🔄 刷新解析內容</button>
+    </div>
+
+    <div class="record-wall">
+        <strong>📈 最近成績紀錄</strong>
+        <div id="record-list" style="margin-top:5px;"></div>
+        <button onclick="clearRecords()" style="width:100%; background:none; color:red; font-size:10px; margin-top:5px; border:1px solid red;">清空紀錄</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <h2 id="current-title" style="margin-top:0;">請選取考卷開始</h2>
+    <hr>
+    <div id="quiz-box"></div>
+    <button id="submitBtn" class="btn-blue" style="display:none; background:var(--success); font-size:18px; padding:15px;">📢 提交評分並紀錄成績</button>
+</div>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    let isEditMode = false; // 預設為作答模式
+    let examPool = {};
+    let rawExamText = "";
+    let fullAnsSequence = []; 
+    let finalData = [];
+    
+    // 計時器變數
+    let startTime, timerInterval, elapsedTime = 0;
+
+    // 初始化介面狀態
+    function updateModeUI() {
+        const zone = document.getElementById('adjustment-zone');
+        const btn = document.getElementById('toggleModeBtn');
+        if(isEditMode) {
+            zone.style.display = "block";
+            btn.innerText = "✍️ 切換至：作答模式";
+            btn.style.background = "var(--warning)";
+        } else {
+            zone.style.display = "none";
+            btn.innerText = "🛠️ 切換至：校正模式";
+            btn.style.background = "var(--dark)";
+        }
+    }
+    updateModeUI();
+    document.getElementById('toggleModeBtn').onclick = () => { isEditMode = !isEditMode; updateModeUI(); };
+
+    // 初始化答案格
+    function initGrid() {
+        const grid = document.getElementById('visualAnsGrid');
+        grid.innerHTML = "";
+        for (let i = 1; i <= 50; i++) {
+            grid.innerHTML += `<div class="ans-unit"><span>${i}</span><input type="text" maxlength="1" id="ansInp-${i}"></div>`;
+        }
+    }
+    initGrid();
+    loadRecords();
+
+    // 檔案處理
+    document.getElementById('folderInput').onchange = function(e) {
+        const files = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+        const pairs = {};
+        files.forEach(f => {
+            const code = f.name.substring(0, 6);
+            const isAns = f.name.includes('_ANS');
+            const sub = f.name.split('_').pop().replace('.pdf', '');
+            const k = code + sub;
+            if (!pairs[k]) pairs[k] = { title: `${code} ${sub}`, exam: null, ans: null };
+            if (isAns) pairs[k].ans = f; else pairs[k].exam = f;
+        });
+        const listDiv = document.getElementById('file-list');
+        listDiv.innerHTML = ""; examPool = pairs;
+        for (let k in pairs) {
+            if (pairs[k].exam && pairs[k].ans) {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerText = `📄 ${pairs[k].title}`;
+                item.onclick = () => {
+                    document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    loadExam(k);
+                    startTimer(); // 選取檔案即開始計時
+                };
+                listDiv.appendChild(item);
+            }
+        }
+    };
+
+    async function loadExam(key) {
+        const pair = examPool[key];
+        document.getElementById('current-title').innerText = pair.title;
+        const yVal = parseInt(document.getElementById('yThreshold').value);
+        rawExamText = await getPdfText_v12(pair.exam, yVal);
+        const rawAnsText = await getPdfText_v12(pair.ans, 10);
+        fullAnsSequence = rawAnsText.match(/[A-E]/g) || [];
+        updateVisualGrid();
+        runParser();
+    }
+
+    function updateVisualGrid() {
+        const offset = parseInt(document.getElementById('ansOffset').value);
+        for (let i = 1; i <= 50; i++) {
+            const targetIdx = i - 1 + offset; 
+            const inp = document.getElementById(`ansInp-${i}`);
+            inp.value = (targetIdx >= 0 && targetIdx < fullAnsSequence.length) ? fullAnsSequence[targetIdx] : "";
+        }
+    }
+
+    async function getPdfText_v12(file, yThres) {
+        const doc = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+        let fullText = "";
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const content = await page.getTextContent();
+            const items = content.items.sort((a, b) => {
+                const ay = a.transform[5], by = b.transform[5];
+                if (Math.abs(ay - by) > yThres) return by - ay;
+                return a.transform[4] - b.transform[4];
+            });
+            let line = ""; let lastY = null;
+            items.forEach(it => {
+                if (lastY !== null && Math.abs(lastY - it.transform[5]) > yThres) { fullText += line + "\n"; line = ""; }
+                line += it.str; lastY = it.transform[5];
+            });
+            fullText += line + "\n";
+        }
+        return fullText.replace(//g,"(A)").replace(//g,"(B)").replace(//g,"(C)").replace(//g,"(D)");
+    }
+
+    function runParser() {
+        if(!rawExamText) return;
+        const trimLen = parseInt(document.getElementById('trimHeader').value);
+        let processedText = rawExamText.substring(trimLen);
+        const qRegex = /(?:^|\n)\s*(\d{1,2})\s+([\s\S]*?)(?=(?:\n\s*)\d{1,2}\s+|$)/g;
+        finalData = []; let m;
+        while ((m = qRegex.exec(processedText)) !== null) {
+            const id = parseInt(m[1]);
+            const block = m[2];
+            const optRegex = /\(([A-D])\)\s*([\s\S]*?)(?=\s*\([A-D]\)|$)/g;
+            const options = []; let o;
+            while ((o = optRegex.exec(block)) !== null) {
+                options.push({ label: o[1], text: o[2].trim().replace(/\n/g, "") });
+            }
+            if (options.length >= 4) {
+                const manualAns = document.getElementById(`ansInp-${id}`).value.toUpperCase() || "?";
+                finalData.push({ id, content: block.split("(A)")[0].trim().replace(/\n/g, ""), options: options.slice(0, 4), correct: manualAns });
+            }
+        }
+        renderUI();
+    }
+
+    function renderUI() {
+        const box = document.getElementById("quiz-box");
+        box.innerHTML = finalData.map(q => `
+            <div class="quiz-card">
+                <b>第 ${q.id} 題：${q.content}</b>
+                <div class="options-list">${q.options.map(o => `<label><input type="radio" name="q${q.id}" value="${o.label}"> (${o.label}) ${o.text}</label>`).join('')}</div>
+                <div class="correct-ans" id="ans-${q.id}">【正確答案：${q.correct}】</div>
+            </div>
+        `).join("");
+        document.getElementById("submitBtn").style.display = finalData.length ? "block" : "none";
+    }
+
+    // 計時器邏輯
+    function startTimer() {
+        resetTimer();
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            elapsedTime = Date.now() - startTime;
+            document.getElementById('timer-display').innerText = formatTime(elapsedTime);
+        }, 1000);
+    }
+    function stopTimer() { clearInterval(timerInterval); }
+    function resetTimer() { stopTimer(); elapsedTime = 0; document.getElementById('timer-display').innerText = "00:00:00"; }
+    function formatTime(ms) {
+        let s = Math.floor(ms / 1000);
+        let h = Math.floor(s / 3600);
+        let m = Math.floor((s % 3600) / 60);
+        s = s % 60;
+        return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    // 成績儲存與讀取
+    function saveRecord(title, score, timeStr) {
+        const records = JSON.parse(localStorage.getItem('examRecords') || "[]");
+        records.unshift({ date: new Date().toLocaleDateString(), title, score, time: timeStr });
+        localStorage.setItem('examRecords', JSON.stringify(records.slice(0, 10)));
+        loadRecords();
+    }
+    function loadRecords() {
+        const records = JSON.parse(localStorage.getItem('examRecords') || "[]");
+        const list = document.getElementById('record-list');
+        list.innerHTML = records.map(r => `
+            <div class="record-item">
+                <span><b>${r.score}分</b> <small>${r.title}</small></span>
+                <span style="color:#999">${r.time}</span>
+            </div>
+        `).join("");
+    }
+    function clearRecords() { localStorage.removeItem('examRecords'); loadRecords(); }
+
+    // 評分與總結
+    document.getElementById("submitBtn").onclick = () => {
+        stopTimer();
+        let correctCount = 0;
+        finalData.forEach(q => {
+            const displayAns = document.getElementById(`ans-${q.id}`);
+            displayAns.style.display = "block";
+            const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+            if (selected && selected.value === q.correct) correctCount++;
+        });
+        const score = Math.round((correctCount / finalData.length) * 100);
+        const timeUsed = document.getElementById('timer-display').innerText;
+        alert(`測驗結束！得分：${score}\n花費時間：${timeUsed}`);
+        saveRecord(document.getElementById('current-title').innerText, score, timeUsed);
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    };
+
+    // 滑桿連動
+    document.getElementById('ansOffset').oninput = function() { document.getElementById('v_off').innerText = this.value; updateVisualGrid(); };
+    document.getElementById('yThreshold').oninput = function() { document.getElementById('v_y').innerText = this.value; };
+    document.getElementById('trimHeader').oninput = function() { document.getElementById('v_t').innerText = this.value; };
+    document.getElementById('applyBtn').onclick = runParser;
+</script>
+</body>
+</html> 
